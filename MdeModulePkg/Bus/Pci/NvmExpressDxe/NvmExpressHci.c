@@ -731,6 +731,7 @@ NvmeControllerInit (
   NVME_ACQ                        Acq;
   UINT8                           Sn[21];
   UINT8                           Mn[41];
+  UINT8                           Retries;
   //
   // Save original PCI attributes and enable this controller.
   //
@@ -910,13 +911,26 @@ NvmeControllerInit (
   //
   // Get current Identify Controller Data
   //
-  Status = NvmeIdentifyController (Private, Private->ControllerData);
+  Retries = 0;
+  do {
+    Status = NvmeIdentifyController (Private, Private->ControllerData);
+    if (EFI_ERROR(Status)) {
+      FreePool(Private->ControllerData);
+      Private->ControllerData = NULL;
+      return EFI_NOT_FOUND;
+    }
 
-  if (EFI_ERROR(Status)) {
-    FreePool(Private->ControllerData);
-    Private->ControllerData = NULL;
-    return EFI_NOT_FOUND;
-  }
+    if (Private->ControllerData->Nn == 0) {
+      if (Retries >= IDENTIFY_CTRL_NO_NN_MAX_RETRIES) {
+        FreePool(Private->ControllerData);
+        Private->ControllerData = NULL;
+        return EFI_NOT_FOUND;
+      } else {
+        gBS->Stall(IDENTIFY_CTRL_NO_NN_RETRY_INTERVAL_USEC);
+        Retries++;
+      }
+    }
+  } while (Private->ControllerData->Nn == 0);
 
   //
   // Dump NvmExpress Identify Controller Data
