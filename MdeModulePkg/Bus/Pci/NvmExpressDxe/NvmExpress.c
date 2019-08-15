@@ -1404,7 +1404,9 @@ NvmExpressDriverEntry (
              &gNvmExpressComponentName,
              &gNvmExpressComponentName2
              );
-  ASSERT_EFI_ERROR (Status);
+  if (EFI_ERROR (Status)) {
+    goto EXIT;
+  }
 
   //
   // Install EFI Driver Supported EFI Version Protocol required for
@@ -1418,5 +1420,6 @@ NvmExpressDriverEntry (
                   NULL
                   );
   ASSERT_EFI_ERROR (Status);
+EXIT:
   return Status;
 }
